@@ -14,7 +14,7 @@
   [response]
   ((comp :result decode-json :body) response))
 
-(defn authenticate-v1
+(defn- authenticate-v1
   [base-url proxy-user proxy-pass user]
   ((comp :token :result decode-json :body)
    (client/post (str (curl/url base-url "auth-v1") "/")
@@ -37,12 +37,21 @@
                {:accept :json
                 :as     :stream})))
 
+(defn- get-app-v1
+  [base-url app-id]
+  (extract-result-v1
+   (client/get (str (curl/url base-url "apps-v1" "apps" app-id))
+               {:accept :json
+                :as     :stream})))
+
 (defprotocol AgaveClient
   "A client for the Agave API."
   (listSystems [this])
   (listPublicApps [this])
   (countPublicApps [this])
-  (getPublicApp [this]))
+  (listMyApps [this])
+  (countMyApps [this])
+  (getApp [this app-id]))
 
 (deftype AgaveClientV1 [base-url user token]
   AgaveClient
@@ -51,7 +60,13 @@
   (listPublicApps [this]
     (list-public-apps-v1 base-url))
   (countPublicApps [this]
-    (count (list-public-apps-v1 base-url))))
+    (count (list-public-apps-v1 base-url)))
+  (listMyApps [this]
+    (list-my-apps-v1 base-url user token))
+  (countMyApps [this]
+    (count (list-my-apps-v1 base-url user token)))
+  (getApp [this app-id]
+    (get-app-v1 base-url app-id)))
 
 (defn agave-v1-client
   [base-url proxy-user proxy-pass user]
