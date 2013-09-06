@@ -73,8 +73,6 @@
   [params param-def]
   (let [{id :id {:keys [required default]} :value} param-def
         field-name                                 (keyword id)
-        _                                          (println id)
-        _                                          (println field-name)
         field-value                                (or (field-name params) default)]
     (when (and required (nil? field-value))
       (throw (IllegalArgumentException. (str "Missing required fiedl, " (name field-name)))))
