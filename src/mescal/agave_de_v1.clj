@@ -1,4 +1,5 @@
-(ns mescal.agave-de-v1)
+(ns mescal.agave-de-v1
+  (:require [clojure.string :as string]))
 
 (def ^:private hpc-group-description "Apps that run on HPC resources.")
 (def ^:private hpc-group-name "High-Performance Computing")
@@ -57,3 +58,68 @@
     (assoc (public-app-group)
       :templates      (map (partial format-app-listing statuses jobs-enabled?) listing)
       :template-count (count listing))))
+
+(defn- get-boolean
+  [value default]
+  (cond (nil? value)    default
+        (string? value) (Boolean/parseBoolean value)
+        :else           value))
+
+(defn- format-group
+  [name params]
+  {:name       name
+   :label      name
+   :id         name
+   :type       ""
+   :properties params
+   :visible    true})
+
+(defn- format-run-option
+  ([name label type value]
+     (format-run-option name label type value true))
+  ([name label type value visible?]
+     {:name    name
+      :label   label
+      :id      name
+      :type    type
+      :order   0
+      :value   value
+      :visible visible?}))
+
+(defn- format-run-options
+  [app-id]
+  [(format-run-option "softwareName" "App ID" "Text" app-id false)
+   (format-run-option "processorCount" "Processor Count" "Integer" "1")
+   (format-run-option "maxMemory" "Maximum Memory in Gigabytes" "Integer" "31")
+   (format-run-option "requestedTime" "Requested Runtime" "Text" "00:30:00")])
+
+(defn- format-input-validator
+  [input]
+  {:required (get-boolean (get-in input [:value :required]) false)})
+
+(defn- format-input
+  [input]
+  {:arguments    []
+   :defaultValue (get-in input [:value :default])
+   :description  (get-in input [:details :description])
+   :id           (:id input)
+   :isVisible    (:isVisible data_object)
+   :label        (get-in input [:details :label])
+   :name         (:id input)
+   :required     (get-boolean (get-in input [:value :required]) false)
+   :type         "FileInput"
+   :validators   []})
+
+(defn get-app
+  [agave jobs-enabled? app-id]
+  (let [app       (.getApp agave app-id)
+        app-name  (first (remove string/blank? (map #(% app) [:name :id])))
+        app-label (first (remove string/blank? (map #(% app) [:label :name :id])))]
+    {:id           (str hpc-group-id "-" app-id)
+     :name         app-name
+     :label        app-label
+     :component_id hpc-group-id
+     :groups       [(format-group "Run Options" (format-run-options app-id))
+                    (format-group "Inputs" (map format-input (:inputs app)))
+                    (format-group "Parameters" (map format-param (:parameters app)))
+                    (format-group "Outputs" (map format-output (:outputs app)))]}))
