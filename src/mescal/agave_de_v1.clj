@@ -97,18 +97,63 @@
   [input]
   {:required (get-boolean (get-in input [:value :required]) false)})
 
-(defn- format-input
-  [input]
+(defn- number-type-for
+  [xsd-type]
+  (cond
+   (= xsd-type "xs:decimal")       "Double"
+   (= xsd-type "xs:float")         "Double"
+   (= xsd-type "xs:double")        "Double"
+   (= xsd-type "xs:integer")       "Integer"
+   (= xsd-type "xs:long")          "Integer"
+   (= xsd-type "xs:int")           "Integer"
+   (= xsd-type "xs:short")         "Integer"
+   (= xsd-type "xs:byte")          "Integer"
+   (= xsd-type "xs:unsignedLong")  "Integer"
+   (= xsd-type "xs:unsignedInt")   "Integer"
+   (= xsd-type "xs:unsignedShort") "Integer"
+   (= xsd-type "xs:unsignedByte")  "Integer"
+   :else                           "Double"))
+
+(defn- string-type-for
+  [xsd-type]
+  (cond
+   (= xsd-type "xs:boolean") "Flag"
+   :else                     "Text"))
+
+(defn- get-param-type
+  [param]
+  (let [type     (get-in param [:value :type])
+        ontology (get-in param [:semantics :ontology])
+        xsd-type (first (filter (partial re-matches #"xs:.*") ontology))
+        regex    (get-in param [:value :validator]) ]
+    (cond
+     (= type "number") (number-type-for xsd-type)
+     (= type "string") (string-type-for xsd-type)
+     (= type "bool")   "Flag")))
+
+(defn- format-param
+  [get-type param]
   {:arguments    []
-   :defaultValue (get-in input [:value :default])
-   :description  (get-in input [:details :description])
-   :id           (:id input)
-   :isVisible    (:isVisible data_object)
-   :label        (get-in input [:details :label])
-   :name         (:id input)
-   :required     (get-boolean (get-in input [:value :required]) false)
-   :type         "FileInput"
+   :defaultValue (get-in param [:value :default])
+   :description  (get-in param [:details :description])
+   :id           (:id param)
+   :isVisible    (get-boolean (get-in param [:value :visible]) true)
+   :label        (get-in param [:details :label])
+   :name         (:id param)
+   :required     (get-boolean (get-in param [:value :required]) false)
+   :type         (get-type param)
    :validators   []})
+
+(def ^:private format-input-param
+  (partial format-param (constantly "FileInput")))
+
+(def ^:private format-opt-param
+  (partial format-param get-param-type))
+
+(def ^:private format-)
+
+(def ^:private format-output-param
+  (partial format-param (constantly "FileOutput")))
 
 (defn get-app
   [agave jobs-enabled? app-id]
@@ -120,6 +165,6 @@
      :label        app-label
      :component_id hpc-group-id
      :groups       [(format-group "Run Options" (format-run-options app-id))
-                    (format-group "Inputs" (map format-input (:inputs app)))
-                    (format-group "Parameters" (map format-param (:parameters app)))
-                    (format-group "Outputs" (map format-output (:outputs app)))]}))
+                    (format-group "Inputs" (map format-input-param (:inputs app)))
+                    (format-group "Parameters" (map format-opt-param (:parameters app)))
+                    (format-group "Outputs" (map format-output-param (:outputs app)))]}))
