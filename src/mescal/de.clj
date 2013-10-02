@@ -6,7 +6,8 @@
   "An Agave client with customizations that are specific to the discovery environment."
   (publicAppGroup [this])
   (listPublicApps [this])
-  (getApp [this app-id]))
+  (getApp [this app-id])
+  (getAppDeployedComponent [this app-id]))
 
 (deftype DeAgaveClientV1 [agave jobs-enabled?]
   DeAgaveClient
@@ -15,7 +16,9 @@
   (listPublicApps [this]
     (v1/list-public-apps agave jobs-enabled?))
   (getApp [this app-id]
-    (v1/get-app agave jobs-enabled? app-id)))
+    (v1/get-app agave app-id))
+  (getAppDeployedComponent [this app-id]
+    (v1/get-deployed-component-for-app agave app-id)))
 
 (defn de-agave-client-v1
   [base-url proxy-user proxy-pass user jobs-enabled?]

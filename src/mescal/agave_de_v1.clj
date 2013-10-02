@@ -78,13 +78,13 @@
   ([name label type value]
      (format-run-option name label type value true))
   ([name label type value visible?]
-     {:name    name
-      :label   label
-      :id      name
-      :type    type
-      :order   0
-      :value   value
-      :visible visible?}))
+     {:name      name
+      :label     label
+      :id        name
+      :type      type
+      :order     0
+      :value     value
+      :isVisible visible?}))
 
 (defn- format-run-options
   [app-id]
@@ -140,6 +140,7 @@
    :isVisible    (get-boolean (get-in param [:value :visible]) true)
    :label        (get-in param [:details :label])
    :name         (:id param)
+   :order        0
    :required     (get-boolean (get-in param [:value :required]) false)
    :type         (get-type param)
    :validators   []})
@@ -150,17 +151,15 @@
 (def ^:private format-opt-param
   (partial format-param get-param-type))
 
-(def ^:private format-)
-
 (def ^:private format-output-param
-  (partial format-param (constantly "FileOutput")))
+  (partial format-param (constantly "Output")))
 
 (defn get-app
-  [agave jobs-enabled? app-id]
+  [agave app-id]
   (let [app       (.getApp agave app-id)
         app-name  (first (remove string/blank? (map #(% app) [:name :id])))
         app-label (first (remove string/blank? (map #(% app) [:label :name :id])))]
-    {:id           (str hpc-group-id "-" app-id)
+    {:id           app-id
      :name         app-name
      :label        app-label
      :component_id hpc-group-id
@@ -168,3 +167,15 @@
                     (format-group "Inputs" (map format-input-param (:inputs app)))
                     (format-group "Parameters" (map format-opt-param (:parameters app)))
                     (format-group "Outputs" (map format-output-param (:outputs app)))]}))
+
+(defn get-deployed-component-for-app
+  [agave app-id]
+  (let [app  (.getApp agave app-id)
+        path (:deploymentPath app)]
+    {:attribution ""
+     :description (:shortDescription app)
+     :id          (:id app)
+     :location    (string/replace path #"/[^/]+$" "")
+     :name        (string/replace path #"^.*/" "")
+     :type        (:executionType app)
+     :version     (:version app)}))
