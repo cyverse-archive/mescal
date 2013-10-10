@@ -9,7 +9,7 @@
   (listMyApps [this])
   (countMyApps [this])
   (getApp [this app-id])
-  (submitJob [this params]))
+  (submitJob [this params] [this app params]))
 
 (deftype AgaveClientV1 [base-url user token]
   AgaveClient
@@ -26,7 +26,9 @@
   (getApp [this app-id]
     (v1/get-app base-url app-id))
   (submitJob [this params]
-    (v1/submit-job base-url user token params)))
+    (v1/submit-job base-url user token params))
+  (submitJob [this app params]
+    (v1/submit-job base-url user token app params)))
 
 (defn agave-client-v1
   [base-url proxy-user proxy-pass user]

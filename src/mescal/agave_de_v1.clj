@@ -184,16 +184,37 @@
   [s]
   (java.util.regex.Pattern/quote s))
 
+(def ^:private path-fix-regex
+  (memoize (fn [irods-home] (re-pattern (str "^" (regex-quote irods-home) "|/$")))))
+
+(defn- fix-path
+  [path irods-home]
+  (when-not (nil? path)
+    (string/replace path (path-fix-regex irods-home) "")))
+
 (defn- get-archive-path
   [irods-home submission]
   (let [irods-home (string/replace irods-home #"/$" "")]
-    (str (string/replace (:outputDirectory submission)
-                         (re-pattern (str "^" (regex-quote irods-home) "|/$")) "")
+    (str (fix-path (:outputDirectory submission) irods-home)
          "/" (:name submission))))
+
+(defn- fix-input-paths
+  [irods-home app config]
+  (reduce
+   (fn [config {input-id :id}]
+     (update-in config [(keyword input-id)] fix-path irods-home))
+   config
+   (:inputs app)))
+
+(defn job-config
+  [irods-home app submission]
+  (assoc (fix-input-paths irods-home app (:config submission))
+    :archive     true
+    :archivePath (get-archive-path irods-home submission)
+    :jobName     (:name submission)))
 
 (defn submit-job
   [agave irods-home submission]
-  (.submitJob agave (assoc (:config submission)
-                      :archive     true
-                      :archivePath (get-archive-path irods-home submission)
-                      :jobName     (:name submission))))
+  (let [app    (.getApp agave (:analysis_id submission))
+        config (job-config irods-home app submission)]
+    (.submitJob agave app config)))

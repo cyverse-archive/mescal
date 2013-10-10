@@ -93,16 +93,17 @@
   (into {} (map (partial param-value params) param-defs)))
 
 (defn submit-job
-  [base-url user token params]
-  (let [form (common-params params)
-        app  (get-app base-url (:softwareName form))
-        form (merge form (params (:inputs app) params))
-        form (merge form (params (:parameters app) params))
-        form (into {} (remove (fn [[_ v]] (nil? v)) form))]
-    (extract-result
-     (client/post (str (curl/url base-url "apps-v1" "job") "/")
-                  {:basic-auth  [user token]
-                   :form-params form
-                   :accept      :json
-                   :as          :stream})
-     {})))
+  ([base-url user token params]
+     (submit-job base-url user token (get-app base-url (:softwareName params)) params))
+  ([base-url user token app params]
+     (let [form (common-params params)
+           form (merge form (params (:inputs app) params))
+           form (merge form (params (:parameters app) params))
+           form (into {} (remove (fn [[_ v]] (nil? v)) form))]
+       (extract-result
+        (client/post (str (curl/url base-url "apps-v1" "job") "/")
+                     {:basic-auth  [user token]
+                      :form-params form
+                      :accept      :json
+                      :as          :stream})
+        {}))))
