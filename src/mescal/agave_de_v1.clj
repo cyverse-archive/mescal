@@ -67,12 +67,13 @@
 
 (defn- format-group
   [name params]
-  {:name       name
-   :label      name
-   :id         name
-   :type       ""
-   :properties params
-   :visible    true})
+  (when-not (empty? params)
+    {:name       name
+     :label      name
+     :id         name
+     :type       ""
+     :properties params
+     :visible    true}))
 
 (defn- format-run-option
   ([name label type value]
@@ -154,6 +155,14 @@
 (def ^:private format-output-param
   (partial format-param (constantly "Output")))
 
+(defn- format-groups
+  [app-id app]
+  (remove nil?
+          [(format-group "Run Options" (format-run-options app-id))
+           (format-group "Inputs" (map format-input-param (:inputs app)))
+           (format-group "Parameters" (map format-opt-param (:parameters app)))
+           (format-group "Outputs" (map format-output-param (:outputs app)))]))
+
 (defn get-app
   [agave app-id]
   (let [app       (.getApp agave app-id)
@@ -163,10 +172,7 @@
      :name         app-name
      :label        app-label
      :component_id hpc-group-id
-     :groups       [(format-group "Run Options" (format-run-options app-id))
-                    (format-group "Inputs" (map format-input-param (:inputs app)))
-                    (format-group "Parameters" (map format-opt-param (:parameters app)))
-                    (format-group "Outputs" (map format-output-param (:outputs app)))]}))
+     :groups       (format-groups app-id app)}))
 
 (defn get-deployed-component-for-app
   [agave app-id]
