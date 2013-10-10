@@ -1,3 +1,4 @@
+
 (ns mescal.agave-de-v1
   (:require [clojure.string :as string]))
 
@@ -5,6 +6,25 @@
 (def ^:private hpc-group-name "High-Performance Computing")
 (def ^:private hpc-group-id "HPC")
 (def ^:private unknown-value "UNKNOWN")
+
+(defn- regex-quote
+  [s]
+  (java.util.regex.Pattern/quote s))
+
+(def ^:private de-to-agave-path-regex
+  (memoize (fn [irods-home] (re-pattern (str "^" (regex-quote irods-home) "|/$")))))
+
+(defn- de-to-agave-path
+  [path irods-home]
+  (when-not (nil? path)
+    (string/replace path (de-to-agave-path-regex irods-home) "")))
+
+(defn- agave-to-de-path
+  [path irods-home]
+  (when-not (nil? path)
+    (str (string/replace irods-home #"/$" "")
+         "/"
+         (string/replace path #"^/" ""))))
 
 (defn public-app-group
   []
@@ -133,9 +153,9 @@
      (= type "bool")   "Flag")))
 
 (defn- format-param
-  [get-type param]
+  [get-type fix-value param]
   {:arguments    []
-   :defaultValue (get-in param [:value :default])
+   :defaultValue (fix-value (get-in param [:value :default]))
    :description  (get-in param [:details :description])
    :id           (:id param)
    :isVisible    (get-boolean (get-in param [:value :visible]) true)
@@ -146,25 +166,28 @@
    :type         (get-type param)
    :validators   []})
 
-(def ^:private format-input-param
-  (partial format-param (constantly "FileInput")))
+(defn- format-input-param
+  [irods-home param]
+  (format-param (constantly "FileInput")
+                #(agave-to-de-path % irods-home)
+                param))
 
 (def ^:private format-opt-param
-  (partial format-param get-param-type))
+  (partial format-param get-param-type identity))
 
 (def ^:private format-output-param
-  (partial format-param (constantly "Output")))
+  (partial format-param (constantly "Output") identity))
 
 (defn- format-groups
-  [app-id app]
+  [irods-home app-id app]
   (remove nil?
           [(format-group "Run Options" (format-run-options app-id))
-           (format-group "Inputs" (map format-input-param (:inputs app)))
+           (format-group "Inputs" (map (partial format-input-param irods-home) (:inputs app)))
            (format-group "Parameters" (map format-opt-param (:parameters app)))
            (format-group "Outputs" (map format-output-param (:outputs app)))]))
 
 (defn get-app
-  [agave app-id]
+  [agave irods-home app-id]
   (let [app       (.getApp agave app-id)
         app-name  (first (remove string/blank? (map #(% app) [:name :id])))
         app-label (first (remove string/blank? (map #(% app) [:label :name :id])))]
@@ -172,7 +195,7 @@
      :name         app-name
      :label        app-label
      :component_id hpc-group-id
-     :groups       (format-groups app-id app)}))
+     :groups       (format-groups irods-home app-id app)}))
 
 (defn get-deployed-component-for-app
   [agave app-id]
@@ -186,29 +209,17 @@
      :type        (:executionType app)
      :version     (:version app)}))
 
-(defn- regex-quote
-  [s]
-  (java.util.regex.Pattern/quote s))
-
-(def ^:private path-fix-regex
-  (memoize (fn [irods-home] (re-pattern (str "^" (regex-quote irods-home) "|/$")))))
-
-(defn- fix-path
-  [path irods-home]
-  (when-not (nil? path)
-    (string/replace path (path-fix-regex irods-home) "")))
-
 (defn- get-archive-path
   [irods-home submission]
   (let [irods-home (string/replace irods-home #"/$" "")]
-    (str (fix-path (:outputDirectory submission) irods-home)
+    (str (de-to-agave-path (:outputDirectory submission) irods-home)
          "/" (:name submission))))
 
 (defn- fix-input-paths
   [irods-home app config]
   (reduce
    (fn [config {input-id :id}]
-     (update-in config [(keyword input-id)] fix-path irods-home))
+     (update-in config [(keyword input-id)] de-to-agave-path irods-home))
    config
    (:inputs app)))
 

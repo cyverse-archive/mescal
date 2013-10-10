@@ -17,7 +17,7 @@
   (listPublicApps [this]
     (v1/list-public-apps agave jobs-enabled?))
   (getApp [this app-id]
-    (v1/get-app agave app-id))
+    (v1/get-app agave irods-home app-id))
   (getAppDeployedComponent [this app-id]
     (v1/get-deployed-component-for-app agave app-id))
   (submitJob [this submission]
