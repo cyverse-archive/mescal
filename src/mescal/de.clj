@@ -7,9 +7,10 @@
   (publicAppGroup [this])
   (listPublicApps [this])
   (getApp [this app-id])
-  (getAppDeployedComponent [this app-id]))
+  (getAppDeployedComponent [this app-id])
+  (submitJob [this submission]))
 
-(deftype DeAgaveClientV1 [agave jobs-enabled?]
+(deftype DeAgaveClientV1 [agave jobs-enabled? irods-home]
   DeAgaveClient
   (publicAppGroup [this]
     (v1/public-app-group))
@@ -18,10 +19,13 @@
   (getApp [this app-id]
     (v1/get-app agave app-id))
   (getAppDeployedComponent [this app-id]
-    (v1/get-deployed-component-for-app agave app-id)))
+    (v1/get-deployed-component-for-app agave app-id))
+  (submitJob [this submission]
+    (v1/submit-job agave irods-home submission)))
 
 (defn de-agave-client-v1
-  [base-url proxy-user proxy-pass user jobs-enabled?]
+  [base-url proxy-user proxy-pass user jobs-enabled? irods-home]
   (DeAgaveClientV1.
    (core/agave-client-v1 base-url proxy-user proxy-pass user)
-   jobs-enabled?))
+   jobs-enabled?
+   irods-home))

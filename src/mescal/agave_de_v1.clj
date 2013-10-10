@@ -78,13 +78,13 @@
   ([name label type value]
      (format-run-option name label type value true))
   ([name label type value visible?]
-     {:name      name
-      :label     label
-      :id        name
-      :type      type
-      :order     0
-      :value     value
-      :isVisible visible?}))
+     {:name         name
+      :label        label
+      :id           name
+      :type         type
+      :order        0
+      :defaultValue value
+      :isVisible    visible?}))
 
 (defn- format-run-options
   [app-id]
@@ -179,3 +179,21 @@
      :name        (string/replace path #"^.*/" "")
      :type        (:executionType app)
      :version     (:version app)}))
+
+(defn- regex-quote
+  [s]
+  (java.util.regex.Pattern/quote s))
+
+(defn- get-archive-path
+  [irods-home submission]
+  (let [irods-home (string/replace irods-home #"/$" "")]
+    (str (string/replace (:outputDirectory submission)
+                         (re-pattern (str "^" (regex-quote irods-home) "|/$")) "")
+         "/" (:name submission))))
+
+(defn submit-job
+  [agave irods-home submission]
+  (.submitJob agave (assoc (:config submission)
+                      :archive     true
+                      :archivePath (get-archive-path irods-home submission)
+                      :jobName     (:name submission))))
