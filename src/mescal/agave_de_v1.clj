@@ -223,7 +223,7 @@
    config
    (:inputs app)))
 
-(defn job-config
+(defn- job-config
   [irods-home app submission]
   (assoc (fix-input-paths irods-home app (:config submission))
     :archive     true
@@ -235,3 +235,44 @@
   (let [app    (.getApp agave (:analysis_id submission))
         config (job-config irods-home app submission)]
     (.submitJob agave app config)))
+
+(defn- app-info-for
+  [app]
+  {:name          (:name app "")
+   :description   (:shortDescription app "")
+   :available     (:available app)
+   :executionHost (:executionHost app)})
+
+(defn- translate-job-status
+  [status]
+  (case status
+    "ARCHIVING_FINISHED" "Completed"
+    "FINISHED"           "Completed"
+    "QUEUED"             "Submitted"
+                         "Running"))
+
+(defn- format-job
+  [irods-home jobs-enabled? statuses app-info-map job]
+  (let [app-id   (:software job)
+        app-info (app-info-map app-id {})]
+    {:id               (str (:id job))
+     :analysis_id      app-id
+     :analysis_details (:description app-info "")
+     :analysis_name    (:name app-info "")
+     :app-disabled     (not (app-enabled? statuses jobs-enabled? app-info))
+     :description      ""
+     :enddate          (str (:endTime job))
+     :name             (:name job)
+     :resultfolderid   (:archivePath job)
+     :startdate        (str (:startTime job))
+     :status           (translate-job-status (:status job))
+     :wiki_url         ""}))
+
+(defn list-jobs
+  [agave jobs-enabled? irods-home]
+  (let [jobs         (.listJobs agave)
+        app-ids      (into #{} (map :software jobs))
+        get-app-info #(app-info-for (.getApp agave %))
+        app-info     (into {} (map (juxt identity get-app-info) app-ids))
+        statuses     (system-statuses agave)]
+    (map (partial format-job irods-home jobs-enabled? statuses app-info) jobs)))

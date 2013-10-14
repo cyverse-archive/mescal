@@ -107,3 +107,12 @@
                       :accept      :json
                       :as          :stream})
         {}))))
+
+(defn list-jobs
+  [base-url user token]
+  (extract-result
+   (client/get (str (curl/url base-url "apps-v1" "jobs" "list"))
+               {:basic-auth  [user token]
+                :accept      :json
+                :as          :stream})
+   []))
