@@ -248,6 +248,8 @@
   (case status
     "ARCHIVING_FINISHED" "Completed"
     "FINISHED"           "Completed"
+    "ARCHIVING_FAILED"   "Failed"
+    "FAILED"             "Failed"
     "QUEUED"             "Submitted"
                          "Running"))
 
