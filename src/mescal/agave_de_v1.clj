@@ -47,7 +47,8 @@
 
 (defn- format-app-listing
   [statuses jobs-enabled? listing]
-  (let [disabled? (not (app-enabled? statuses jobs-enabled? listing))]
+  (let [disabled? (not (app-enabled? statuses jobs-enabled? listing))
+        app-name  (first (remove string/blank? (map #(% listing) [:label :name :id])))]
     (-> listing
         (dissoc :available :checkpointable :deploymentPath :executionHost :executionType
                 :helpURI :inputs :longDescription :modules :ontolog :outputs :parallelism
@@ -69,7 +70,8 @@
             :pipeline_eligibility {:is_valid false :reason "HPC App"}
             :rating               {:average 0.0}
             :step-count           1
-            :wiki_url             ""))))
+            :wiki_url             ""
+            :name                 app-name))))
 
 (defn list-public-apps
   [agave jobs-enabled?]
@@ -87,13 +89,12 @@
 
 (defn- format-group
   [name params]
-  (when-not (empty? params)
+  (when (some :isVisible params)
     {:name       name
      :label      name
      :id         name
      :type       ""
-     :properties params
-     :visible    true}))
+     :properties params}))
 
 (defn- format-run-option
   ([name label type value]
@@ -158,7 +159,7 @@
    :defaultValue (fix-value (get-in param [:value :default]))
    :description  (get-in param [:details :description])
    :id           (:id param)
-   :isVisible    (get-boolean (get-in param [:value :visible]) true)
+   :isVisible    (get-boolean (get-in param [:value :visible]) false)
    :label        (get-in param [:details :label])
    :name         (:id param)
    :order        0
@@ -189,7 +190,7 @@
 (defn get-app
   [agave irods-home app-id]
   (let [app       (.getApp agave app-id)
-        app-name  (first (remove string/blank? (map #(% app) [:name :id])))
+        app-name  (first (remove string/blank? (map #(% app) [:label :name :id])))
         app-label (first (remove string/blank? (map #(% app) [:label :name :id])))]
     {:id           app-id
      :name         app-name
@@ -232,7 +233,7 @@
 
 (defn- app-info-for
   [app]
-  {:name          (:name app "")
+  {:name          (:label app "")
    :description   (:shortDescription app "")
    :available     (:available app)
    :executionHost (:executionHost app)})
