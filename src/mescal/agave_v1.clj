@@ -51,6 +51,7 @@
 
 (defn get-app
   [base-url app-id]
+  (println "app-id =" app-id)
   (extract-result
    (client/get (str (curl/url base-url "apps-v1" "apps" app-id))
                {:accept :json
@@ -108,11 +109,24 @@
                       :as          :stream})
         {}))))
 
-(defn list-jobs
-  [base-url user token]
+(defn list-job
+  [base-url user token job-id]
   (extract-result
-   (client/get (str (curl/url base-url "apps-v1" "jobs" "list"))
-               {:basic-auth  [user token]
-                :accept      :json
-                :as          :stream})
-   []))
+   (client/get (str (curl/url base-url "apps-v1" "job" job-id))
+               {:basic-auth [user token]
+                :accept     :json
+                :as         :stream})
+   {}))
+
+(defn list-jobs
+  ([base-url user token]
+     (extract-result
+      (client/get (str (curl/url base-url "apps-v1" "jobs" "list"))
+                  {:basic-auth [user token]
+                   :accept     :json
+                   :as         :stream})
+      []))
+  ([base-url user token job-ids]
+     (let [job-ids (map str job-ids)]
+       (filter (comp (set job-ids) str :id)
+               (list-jobs base-url user token)))))

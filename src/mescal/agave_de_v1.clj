@@ -230,12 +230,6 @@
     :archivePath (get-archive-path irods-home submission)
     :jobName     (:name submission)))
 
-(defn submit-job
-  [agave irods-home submission]
-  (let [app    (.getApp agave (:analysis_id submission))
-        config (job-config irods-home app submission)]
-    (.submitJob agave app config)))
-
 (defn- app-info-for
   [app]
   {:name          (:name app "")
@@ -270,21 +264,28 @@
      :status           (translate-job-status (:status job))
      :wiki_url         ""}))
 
+(defn submit-job
+  [agave irods-home submission]
+  (let [app-id (:analysis_id submission)
+        app    (.getApp agave app-id)
+        config (job-config irods-home app submission)]
+    (format-job irods-home true (system-statuses agave) {app-id app}
+                (.submitJob agave app config))))
+
 (defn- load-app-info-for-jobs
   [agave jobs]
   (let [app-ids      (into #{} (map :software jobs))
         get-app-info #(app-info-for (.getApp agave %))]
     (into {} (map (juxt identity get-app-info) app-ids))))
 
-(defn list-jobs
-  [agave jobs-enabled? irods-home]
-  (let [jobs     (.listJobs agave)
-        app-info (load-app-info-for-jobs agave jobs)
+(defn- format-jobs
+  [agave irods-home jobs-enabled? jobs]
+  (let [app-info (load-app-info-for-jobs agave jobs)
         statuses (system-statuses agave)]
     (map (partial format-job irods-home jobs-enabled? statuses app-info) jobs)))
 
-(defn list-raw-jobs
-  [agave]
-  (let [jobs     (.listJobs agave)
-        app-info (load-app-info-for-jobs agave jobs)]
-    (map #(assoc % :analysis_name (:name (app-info (:software %)))) jobs)))
+(defn list-jobs
+  ([agave jobs-enabled? irods-home]
+     (format-jobs agave irods-home jobs-enabled? (.listJobs agave)))
+  ([agave jobs-enabled? irods-home job-ids]
+     (format-jobs agave irods-home jobs-enabled? (.listJobs agave job-ids))))
