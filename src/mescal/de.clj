@@ -10,6 +10,7 @@
   (getAppDeployedComponent [this app-id])
   (submitJob [this submission])
   (listJobs [this] [this job-ids])
+  (listRawJob [this job-id])
   (translateJobStatus [this status]))
 
 (deftype DeAgaveClientV1 [agave jobs-enabled? irods-home]
@@ -28,6 +29,8 @@
     (v1/list-jobs agave jobs-enabled? irods-home))
   (listJobs [this job-ids]
     (v1/list-jobs agave jobs-enabled? irods-home job-ids))
+  (listRawJob [this job-id]
+    (v1/list-raw-job agave job-id))
   (translateJobStatus [this status]
     (v1/translate-job-status status)))
 

@@ -1,4 +1,3 @@
-
 (ns mescal.agave-de-v1
   (:require [clojure.string :as string]))
 
@@ -255,13 +254,13 @@
     {:id               (str (:id job))
      :analysis_id      app-id
      :analysis_details (:description app-info "")
-     :analysis_name    (:name app-info "")
+     :analysis_name    (first (remove string/blank? (map #(% app-info) [:label :name :id])))
      :app-disabled     (not (app-enabled? statuses jobs-enabled? app-info))
      :description      ""
      :enddate          (str (:endTime job))
      :name             (:name job)
      :resultfolderid   (:archivePath job)
-     :startdate        (str (:startTime job))
+     :startdate        (str (:submitTime job))
      :status           (translate-job-status (:status job))
      :wiki_url         ""}))
 
@@ -290,3 +289,7 @@
      (format-jobs agave irods-home jobs-enabled? (.listJobs agave)))
   ([agave jobs-enabled? irods-home job-ids]
      (format-jobs agave irods-home jobs-enabled? (.listJobs agave job-ids))))
+
+(defn list-raw-job
+  [agave job-id]
+  (update-in (.listJob agave job-id) [:status] translate-job-status))
