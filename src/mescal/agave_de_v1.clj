@@ -111,8 +111,8 @@
   [app-id]
   [(format-run-option "softwareName" "App ID" "Text" app-id false)
    (format-run-option "processorCount" "Processor Count" "Integer" "1")
-   (format-run-option "maxMemory" "Maximum Memory in Gigabytes" "Integer" "31")
-   (format-run-option "requestedTime" "Requested Runtime" "Text" "00:30:00")])
+   (format-run-option "maxMemory" "Maximum Memory in Gigabytes" "Integer" "4")
+   (format-run-option "requestedTime" "Requested Runtime" "Text" "1:00:00")])
 
 (defn- format-input-validator
   [input]
@@ -237,32 +237,57 @@
    :available     (:available app)
    :executionHost (:executionHost app)})
 
+(def ^:private submitted "Submitted")
+(def ^:private running "Running")
+(def ^:private failed "Failed")
+(def ^:private completed "Completed")
+
 (defn translate-job-status
   [status]
   (case status
-    "ARCHIVING_FINISHED" "Completed"
-    "FINISHED"           "Completed"
-    "ARCHIVING_FAILED"   "Failed"
-    "FAILED"             "Failed"
-    "QUEUED"             "Submitted"
+    "PENDING"            submitted
+    "STAGING_INPUTS"     submitted
+    "CLEANING_UP"        running
+    "ARCHIVING"          running
+    "STAGING_JOB"        running
+    "FINISHED"           running
+    "KILLED"             failed
+    "FAILED"             failed
+    "STOPPED"            failed
+    "RUNNING"            running
+    "PAUSED"             running
+    "QUEUED"             submitted
+    "SUBMITTING"         submitted
+    "STAGED"             submitted
+    "PROCESSING_INPUTS"  submitted
+    "ARCHIVING_FINISHED" completed
+    "ARCHIVING_FAILED"   failed
                          "Running"))
 
+(defn- build-path
+  [base & rest]
+  (string/join "/" (cons base (map #(string/replace % #"^/|/$" "") rest))))
+
 (defn- format-job
-  [irods-home jobs-enabled? statuses app-info-map job]
-  (let [app-id   (:software job)
-        app-info (app-info-map app-id {})]
-    {:id               (str (:id job))
-     :analysis_id      app-id
-     :analysis_details (:description app-info "")
-     :analysis_name    (first (remove string/blank? (map #(% app-info) [:label :name :id])))
-     :app-disabled     (not (app-enabled? statuses jobs-enabled? app-info))
-     :description      ""
-     :enddate          (str (:endTime job))
-     :name             (:name job)
-     :resultfolderid   (:archivePath job)
-     :startdate        (str (:submitTime job))
-     :status           (translate-job-status (:status job))
-     :wiki_url         ""}))
+  ([irods-home jobs-enabled? app-info-map job]
+     (let [app-id   (:software job)
+           app-info (app-info-map app-id {})]
+       {:id               (str (:id job))
+        :analysis_id      app-id
+        :analysis_details (:description app-info "")
+        :analysis_name    (first (remove string/blank? (map #(% app-info) [:label :name :id])))
+        :description      ""
+        :enddate          (str (:endTime job))
+        :name             (:name job)
+        :resultfolderid   (build-path irods-home (:archivePath job))
+        :startdate        (str (:submitTime job))
+        :status           (translate-job-status (:status job))
+        :wiki_url         ""}))
+  ([irods-home jobs-enabled? statuses app-info-map job]
+     (let [app-id   (:software job)
+           app-info (app-info-map app-id {})]
+       (assoc (format-job irods-home jobs-enabled? app-info-map job)
+         :app-disabled (not (app-enabled? statuses jobs-enabled? app-info))))))
 
 (defn submit-job
   [agave irods-home submission]
@@ -291,5 +316,6 @@
      (format-jobs agave irods-home jobs-enabled? (.listJobs agave job-ids))))
 
 (defn list-raw-job
-  [agave job-id]
-  (update-in (.listJob agave job-id) [:status] translate-job-status))
+  [agave jobs-enabled? irods-home job-id]
+  (let [job (.listJob agave job-id)]
+    (format-job irods-home jobs-enabled? (load-app-info-for-jobs agave [job]) job)))

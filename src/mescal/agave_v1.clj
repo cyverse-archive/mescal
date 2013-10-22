@@ -51,7 +51,6 @@
 
 (defn get-app
   [base-url app-id]
-  (println "app-id =" app-id)
   (extract-result
    (client/get (str (curl/url base-url "apps-v1" "apps" app-id))
                {:accept :json

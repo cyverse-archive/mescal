@@ -30,7 +30,7 @@
   (listJobs [this job-ids]
     (v1/list-jobs agave jobs-enabled? irods-home job-ids))
   (listRawJob [this job-id]
-    (v1/list-raw-job agave job-id))
+    (v1/list-raw-job agave jobs-enabled? irods-home job-id))
   (translateJobStatus [this status]
     (v1/translate-job-status status)))
 
