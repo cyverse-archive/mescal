@@ -213,7 +213,7 @@
   [irods-home submission]
   (let [irods-home (string/replace irods-home #"/$" "")]
     (str (de-to-agave-path (:outputDirectory submission) irods-home)
-         "/" (:name submission))))
+         "/" (string/replace (:name submission) #"\s" "_"))))
 
 (defn- fix-input-paths
   [irods-home app config]
