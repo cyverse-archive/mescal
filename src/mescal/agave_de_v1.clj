@@ -249,7 +249,7 @@
     "STAGING_INPUTS"     submitted
     "CLEANING_UP"        running
     "ARCHIVING"          running
-    "STAGING_JOB"        running
+    "STAGING_JOB"        submitted
     "FINISHED"           running
     "KILLED"             failed
     "FAILED"             failed
