@@ -11,6 +11,7 @@
   (submitJob [this submission])
   (listJobs [this] [this job-ids])
   (listRawJob [this job-id])
+  (listJobIds [this])
   (translateJobStatus [this status]))
 
 (deftype DeAgaveClientV1 [agave jobs-enabled? irods-home]
@@ -31,6 +32,8 @@
     (v1/list-jobs agave jobs-enabled? irods-home job-ids))
   (listRawJob [this job-id]
     (v1/list-raw-job agave jobs-enabled? irods-home job-id))
+  (listJobIds [this]
+    (v1/list-job-ids agave))
   (translateJobStatus [this status]
     (v1/translate-job-status status)))
 

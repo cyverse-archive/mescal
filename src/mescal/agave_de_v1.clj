@@ -319,3 +319,7 @@
   [agave jobs-enabled? irods-home job-id]
   (let [job (.listJob agave job-id)]
     (format-job irods-home jobs-enabled? (load-app-info-for-jobs agave [job]) job)))
+
+(defn list-job-ids
+  [agave]
+  (map (comp str :id) (.listJobs agave)))
