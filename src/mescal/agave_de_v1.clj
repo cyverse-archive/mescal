@@ -323,3 +323,55 @@
 (defn list-job-ids
   [agave]
   (map (comp str :id) (.listJobs agave)))
+
+(defn- format-param-value
+  [get-val get-default get-type get-format get-info-type param]
+  (let [default   (get-default)
+        param-val (get-val)]
+    {:data_format      (get-format)
+     :full_param_id    (:id param)
+     :info_type        (get-info-type)
+     :is_default_value (= param-val default)
+     :is_visible       (get-boolean (get-in param [:value :visible]) false)
+     :param_id         (:id param)
+     :param_name       (get-in param [:details :label] "")
+     :param_type       (get-type param)
+     :param_value      {:value param-val}}))
+
+(defn- get-param-value
+  [param-values param]
+  (param-values (keyword (:id param)) ""))
+
+(defn- get-default-param-value
+  [param]
+  (:defaultValue param ""))
+
+(defn- format-input-param-value
+  [irods-home param-values param]
+  (format-param-value #(agave-to-de-path (get-param-value param-values param) irods-home)
+                      #(agave-to-de-path (get-default-param-value param) irods-home)
+                      (constantly "FileInput")
+                      (constantly "Unspecified")
+                      (constantly "File")
+                      param))
+
+(defn- format-opt-param-value
+  [param-values param]
+  (format-param-value #(get-param-value param-values param)
+                      #(get-default-param-value param)
+                      get-param-type
+                      (constantly "")
+                      (constantly "")
+                      param))
+
+(defn get-job-params
+  [agave irods-home job-id]
+  (let [job          (.listJob agave job-id)
+        param-values (apply merge (apply concat ((juxt :inputs :parameters) job)))
+        format-input (partial format-input-param-value irods-home param-values)
+        format-opt   (partial format-opt-param-value param-values)
+        app-id       (:software job)
+        app          (.getApp agave app-id)]
+    {:analysis_id app-id
+     :parameters  (concat (mapv format-input (:inputs app))
+                          (mapv format-opt (:parameters app)))}))
