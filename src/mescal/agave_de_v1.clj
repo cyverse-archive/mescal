@@ -15,12 +15,12 @@
 
 (defn- de-to-agave-path
   [path irods-home]
-  (when-not (nil? path)
+  (when-not (string/blank? path)
     (string/replace path (de-to-agave-path-regex irods-home) "")))
 
 (defn- agave-to-de-path
   [path irods-home]
-  (when-not (nil? path)
+  (when-not (string/blank? path)
     (str (string/replace irods-home #"/$" "")
          "/"
          (string/replace path #"^/" ""))))
@@ -161,9 +161,9 @@
      (= type "bool")   "Flag")))
 
 (defn- format-param
-  [get-type fix-value param]
+  [get-type get-value param]
   {:arguments    []
-   :defaultValue (fix-value (get-in param [:value :default]))
+   :defaultValue (get-value param)
    :description  (get-in param [:details :description])
    :id           (:id param)
    :isVisible    (get-boolean (get-in param [:value :visible]) false)
@@ -174,25 +174,34 @@
    :type         (get-type param)
    :validators   []})
 
-(defn- format-input-param
-  [irods-home param]
-  (format-param (constantly "FileInput")
-                #(agave-to-de-path % irods-home)
-                param))
+(defn- param-formatter
+  [get-type get-value]
+  (fn [param]
+    (format-param get-type get-value param)))
 
-(def ^:private format-opt-param
-  (partial format-param get-param-type identity))
+(defn- get-default-param-value
+  [param]
+  (get-in param [:value :default]))
 
-(def ^:private format-output-param
-  (partial format-param (constantly "Output") identity))
+(defn- input-param-formatter
+  [irods-home & {:keys [get-default] :or {get-default get-default-param-value}}]
+  (param-formatter (constantly "FileInput") #(agave-to-de-path (get-default %) irods-home)))
+
+(defn- opt-param-formatter
+  [& {:keys [get-default] :or {get-default get-default-param-value}}]
+  (param-formatter get-param-type get-default))
+
+(defn- output-param-formatter
+  [& {:keys [get-default] :or {get-default get-default-param-value}}]
+  (param-formatter (constantly "Output") get-default))
 
 (defn- format-groups
   [irods-home app-id app]
   (remove nil?
           [(format-group "Run Options" (format-run-options app-id))
-           (format-group "Inputs" (map (partial format-input-param irods-home) (:inputs app)))
-           (format-group "Parameters" (map format-opt-param (:parameters app)))
-           (format-group "Outputs" (map format-output-param (:outputs app)))]))
+           (format-group "Inputs" (map (input-param-formatter irods-home) (:inputs app)))
+           (format-group "Parameters" (map (opt-param-formatter) (:parameters app)))
+           (format-group "Outputs" (map (output-param-formatter) (:outputs app)))]))
 
 (defn get-app
   [agave irods-home app-id]
