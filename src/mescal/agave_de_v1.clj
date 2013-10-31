@@ -196,23 +196,25 @@
   (param-formatter (constantly "Output") get-default))
 
 (defn- format-groups
-  [irods-home app-id app]
+  [irods-home app]
   (remove nil?
-          [(format-group "Run Options" (format-run-options app-id))
+          [(format-group "Run Options" (format-run-options (:id app)))
            (format-group "Inputs" (map (input-param-formatter irods-home) (:inputs app)))
            (format-group "Parameters" (map (opt-param-formatter) (:parameters app)))
            (format-group "Outputs" (map (output-param-formatter) (:outputs app)))]))
 
-(defn get-app
-  [agave irods-home app-id]
-  (let [app       (.getApp agave app-id)
-        app-name  (first (remove string/blank? (map #(% app) [:label :name :id])))
-        app-label (first (remove string/blank? (map #(% app) [:label :name :id])))]
-    {:id           app-id
-     :name         app-name
+(defn- format-app
+  [app group-formatter]
+  (let [app-label (first (remove string/blank? (map app [:label :name :id])))]
+    {:id           (:id app)
+     :name         app-label
      :label        app-label
      :component_id hpc-group-id
-     :groups       (format-groups irods-home app-id app)}))
+     :groups       (group-formatter app)}))
+
+(defn get-app
+  [agave irods-home app-id]
+  (format-app (.getApp agave app-id) (partial format-groups irods-home)))
 
 (defn get-deployed-component-for-app
   [agave app-id]
