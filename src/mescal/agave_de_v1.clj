@@ -95,9 +95,17 @@
      :type       ""
      :properties params}))
 
+(def ^:private run-option-info
+  {:software-name   ["softwareName" "App ID" "Text" nil false]
+   :processor-count ["processorCount" "Processor Count" "Integer" "1" true]
+   :max-memory      ["maxMemory" "Maximum Memory in Gigabytes" "Integer" "4" true]
+   :requested-time  ["requestedTime" "Requested Runtime" "Text" "1:00:00" true]})
+
 (defn- format-run-option
-  ([name label type value]
-     (format-run-option name label type value true))
+  ([run-opt]
+     (apply format-run-option (run-option-info run-opt)))
+  ([run-opt value]
+     (apply format-run-option (assoc (run-option-info run-opt) 3 value)))
   ([name label type value visible?]
      {:name         name
       :label        label
@@ -109,10 +117,10 @@
 
 (defn- format-run-options
   [app-id]
-  [(format-run-option "softwareName" "App ID" "Text" app-id false)
-   (format-run-option "processorCount" "Processor Count" "Integer" "1")
-   (format-run-option "maxMemory" "Maximum Memory in Gigabytes" "Integer" "4")
-   (format-run-option "requestedTime" "Requested Runtime" "Text" "1:00:00")])
+  [(format-run-option :software-name app-id)
+   (format-run-option :processor-count)
+   (format-run-option :max-memory)
+   (format-run-option :requested-time)])
 
 (defn- format-input-validator
   [input]
@@ -326,8 +334,8 @@
 
 (defn- format-param-value
   [get-val get-default get-type get-format get-info-type param]
-  (let [default   (get-default)
-        param-val (get-val)]
+  (let [default   (str (get-default))
+        param-val (str (get-val))]
     {:data_format      (get-format)
      :full_param_id    (:id param)
      :info_type        (get-info-type)
@@ -364,6 +372,26 @@
                       (constantly "")
                       param))
 
+(defn- format-runopt-param-value
+  ([run-opt value]
+     (apply format-runopt-param-value value (run-option-info run-opt)))
+  ([value name label type default-value visible?]
+     (format-param-value (constantly value)
+                         (constantly default-value)
+                         (constantly type)
+                         (constantly "")
+                         (constantly "")
+                         {:id      name
+                          :value   {:visible visible?}
+                          :details {:label label}})))
+
+(defn- format-runopt-param-values
+  [job]
+  [(format-runopt-param-value :software-name (:software job))
+   (format-runopt-param-value :processor-count (:processors job))
+   (format-runopt-param-value :max-memory (:memory job))
+   (format-runopt-param-value :requested-time (:requestedTime job))])
+
 (defn get-job-params
   [agave irods-home job-id]
   (let [job          (.listJob agave job-id)
@@ -373,5 +401,6 @@
         app-id       (:software job)
         app          (.getApp agave app-id)]
     {:analysis_id app-id
-     :parameters  (concat (mapv format-input (:inputs app))
+     :parameters  (concat (format-runopt-param-values job)
+                          (mapv format-input (:inputs app))
                           (mapv format-opt (:parameters app)))}))
