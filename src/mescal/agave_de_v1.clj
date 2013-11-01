@@ -298,6 +298,7 @@
         :description      ""
         :enddate          (str (:endTime job))
         :name             (:name job)
+        :raw_status       (:status job)
         :resultfolderid   (build-path irods-home (:archivePath job))
         :startdate        (str (:submitTime job))
         :status           (translate-job-status (:status job))
