@@ -13,6 +13,7 @@
   (listRawJob [this job-id])
   (listJobIds [this])
   (getJobParams [this job-id])
+  (getAppRerunInfo [this job-id])
   (translateJobStatus [this status]))
 
 (deftype DeAgaveClientV1 [agave jobs-enabled? irods-home]
@@ -37,6 +38,8 @@
     (v1/list-job-ids agave))
   (getJobParams [this job-id]
     (v1/get-job-params agave irods-home job-id))
+  (getAppRerunInfo [this job-id]
+    (v1/get-app-rerun-info agave irods-home job-id))
   (translateJobStatus [this status]
     (v1/translate-job-status status)))
 

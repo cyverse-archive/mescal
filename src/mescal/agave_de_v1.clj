@@ -415,3 +415,34 @@
      :parameters  (concat (format-runopt-param-values job)
                           (mapv format-input (:inputs app))
                           (mapv format-opt (:parameters app)))}))
+
+(defn- app-rerun-value-getter
+  [job k]
+  (let [values (apply merge (job k))]
+    (fn [p]
+      (or (values (keyword (:id p)))
+          (get-default-param-value p)))))
+
+(defn- format-rerun-options
+  [job]
+  [(format-run-option :software-name (:software job))
+   (format-run-option :processor-count (:processors job))
+   (format-run-option :max-memory (:memory job))
+   (format-run-option :requested-time (:requestedTime job))])
+
+(defn- format-groups-for-rerun
+  [irods-home job app]
+  (let [value-getter (partial app-rerun-value-getter job)
+        format-input (input-param-formatter irods-home :get-default (value-getter :inputs))
+        format-opt   (opt-param-formatter :get-default (value-getter :parameters))]
+    (remove nil?
+            [(format-group "Run Options" (format-rerun-options job))
+             (format-group "Inputs" (map format-input (:inputs app)))
+             (format-group "Parameters" (map format-opt (:parameters app)))
+             (format-group "Outputs" (map (output-param-formatter) (:outputs app)))])))
+
+(defn get-app-rerun-info
+  [agave irods-home job-id]
+  (let [job (.listJob agave job-id)
+        app (.getApp agave (:software job))]
+    (format-app app (partial format-groups-for-rerun irods-home job))))
