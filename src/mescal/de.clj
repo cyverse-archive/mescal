@@ -8,6 +8,7 @@
   (listPublicApps [this])
   (getApp [this app-id])
   (getAppDeployedComponent [this app-id])
+  (getAppDetails [this app-id])
   (submitJob [this submission])
   (listJobs [this] [this job-ids])
   (listRawJob [this job-id])
@@ -26,6 +27,8 @@
     (v1/get-app agave irods-home app-id))
   (getAppDeployedComponent [this app-id]
     (v1/get-deployed-component-for-app agave app-id))
+  (getAppDetails [this app-id]
+    (v1/get-app-details agave app-id))
   (submitJob [this submission]
     (v1/submit-job agave irods-home submission))
   (listJobs [this]

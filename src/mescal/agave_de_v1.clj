@@ -6,6 +6,10 @@
 (def ^:private hpc-group-id "HPC")
 (def ^:private unknown-value "UNKNOWN")
 
+(def ^:private hpc-group-overview
+  {:id   hpc-group-id
+   :name hpc-group-name})
+
 (defn- regex-quote
   [s]
   (java.util.regex.Pattern/quote s))
@@ -44,10 +48,14 @@
        (:available listing)
        (= "up" (statuses (:executionHost listing)))))
 
+(defn- get-app-name
+  [app]
+  (first (remove string/blank? (map app [:label :name :id]))))
+
 (defn- format-app-listing
   [statuses jobs-enabled? listing]
   (let [disabled? (not (app-enabled? statuses jobs-enabled? listing))
-        app-name  (first (remove string/blank? (map #(% listing) [:label :name :id])))]
+        app-name  (get-app-name listing)]
     (-> listing
         (dissoc :available :checkpointable :deploymentPath :executionHost :executionType
                 :helpURI :inputs :longDescription :modules :ontolog :outputs :parallelism
@@ -79,6 +87,37 @@
     (assoc (public-app-group)
       :templates      (map (partial format-app-listing statuses jobs-enabled?) listing)
       :template-count (count listing))))
+
+(defn format-deployed-component-for-app
+  [{path :deploymentPath :as app}]
+  {:attribution ""
+   :description (:shortDescription app)
+   :id          (:id app)
+   :location    (string/replace path #"/[^/]+$" "")
+   :name        (string/replace path #"^.*/" "")
+   :type        (:executionType app)
+   :version     (:version app)})
+
+(defn get-deployed-component-for-app
+  [agave app-id]
+  (format-deployed-component-for-app (.getApp agave app-id)))
+
+(defn get-app-details
+  [agave app-id]
+  (let [now      (str (System/currentTimeMillis))
+        app      (.getApp agave app-id)
+        app-name (get-app-name app)]
+    {:published_date   now
+     :edited_date      now
+     :id               app-id
+     :refrences        []
+     :description      (:shortDescription app)
+     :name             app-name
+     :label            app-name
+     :tito             app-id
+     :components       [(format-deployed-component-for-app app)]
+     :groups           [hpc-group-overview]
+     :suggested_groups [hpc-group-overview]}))
 
 (defn- get-boolean
   [value default]
@@ -205,7 +244,7 @@
 
 (defn- format-app
   [app group-formatter]
-  (let [app-label (first (remove string/blank? (map app [:label :name :id])))]
+  (let [app-label (get-app-name app)]
     {:id           (:id app)
      :name         app-label
      :label        app-label
@@ -215,18 +254,6 @@
 (defn get-app
   [agave irods-home app-id]
   (format-app (.getApp agave app-id) (partial format-groups irods-home)))
-
-(defn get-deployed-component-for-app
-  [agave app-id]
-  (let [app  (.getApp agave app-id)
-        path (:deploymentPath app)]
-    {:attribution ""
-     :description (:shortDescription app)
-     :id          (:id app)
-     :location    (string/replace path #"/[^/]+$" "")
-     :name        (string/replace path #"^.*/" "")
-     :type        (:executionType app)
-     :version     (:version app)}))
 
 (defn- get-archive-path
   [irods-home submission]
@@ -294,7 +321,7 @@
        {:id               (str (:id job))
         :analysis_id      app-id
         :analysis_details (:description app-info "")
-        :analysis_name    (first (remove string/blank? (map #(% app-info) [:label :name :id])))
+        :analysis_name    (get-app-name app-info)
         :description      ""
         :enddate          (str (:endTime job))
         :name             (:name job)
