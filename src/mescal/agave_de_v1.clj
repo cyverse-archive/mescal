@@ -88,7 +88,23 @@
         listing  (.listPublicApps agave)]
     (assoc (public-app-group)
       :templates      (map (partial format-app-listing statuses jobs-enabled?) listing)
-      :template-count (count listing))))
+      :template_count (count listing))))
+
+(defn- app-matches?
+  [search-term app]
+  (some (fn [s] (re-find (re-pattern (str "(?i)\\Q" search-term)) s))
+        ((juxt :name :description) app)))
+
+(defn- find-matching-apps
+  [agave jobs-enabled? search-term]
+  (filter (partial app-matches? search-term)
+          (:templates (list-public-apps agave jobs-enabled?))))
+
+(defn search-public-apps
+  [agave jobs-enabled? search-term]
+  (let [matching-apps (find-matching-apps agave jobs-enabled? search-term)]
+    {:template_count (count matching-apps)
+     :templates      matching-apps}))
 
 (defn format-deployed-component-for-app
   [{path :deploymentPath :as app}]

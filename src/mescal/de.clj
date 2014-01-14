@@ -6,6 +6,7 @@
   "An Agave client with customizations that are specific to the discovery environment."
   (publicAppGroup [this])
   (listPublicApps [this])
+  (searchPublicApps [this search-term])
   (getApp [this app-id])
   (getAppDeployedComponent [this app-id])
   (getAppDetails [this app-id])
@@ -23,6 +24,8 @@
     (v1/public-app-group))
   (listPublicApps [this]
     (v1/list-public-apps agave jobs-enabled?))
+  (searchPublicApps [this search-term]
+    (v1/search-public-apps agave jobs-enabled? search-term))
   (getApp [this app-id]
     (v1/get-app agave irods-home app-id))
   (getAppDeployedComponent [this app-id]
