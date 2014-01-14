@@ -50,7 +50,9 @@
 
 (defn- get-app-name
   [app]
-  (first (remove string/blank? (map app [:label :name :id]))))
+  (let [app-name (first (remove string/blank? (map app [:label :name :id])))
+        app-id   (:id app)]
+    (str app-name " [" app-id "]")))
 
 (defn- format-app-listing
   [statuses jobs-enabled? listing]
