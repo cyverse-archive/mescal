@@ -65,6 +65,8 @@
                 :testPath :version)
         (assoc
             :can_run              true
+            :can_favor            false
+            :can_rate             false
             :deleted              false
             :description          (:shortDescription listing)
             :disabled             disabled?
