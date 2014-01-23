@@ -154,31 +154,6 @@
      :type       ""
      :properties params}))
 
-(def ^:private run-option-info
-  {:software-name   ["softwareName" "App ID" "Text" nil false]
-   :processor-count ["processorCount" "Processor Count" "Integer" "1" true]
-   :max-memory      ["maxMemory" "Maximum Memory in Gigabytes" "Integer" "4" true]
-   :requested-time  ["requestedTime" "Requested Runtime" "Text" "1:00:00" true]})
-
-(defn- format-run-option
-  ([run-opt provided-value]
-     (apply format-run-option provided-value (run-option-info run-opt)))
-  ([provided-value name label type default-value visible?]
-     {:name         name
-      :label        label
-      :id           name
-      :type         type
-      :order        0
-      :defaultValue (if (nil? provided-value) default-value provided-value)
-      :isVisible    visible?}))
-
-(defn- format-run-options
-  [app]
-  [(format-run-option :software-name (:id app))
-   (format-run-option :processor-count (:defaultProcessors app))
-   (format-run-option :max-memory (:defaultMemory app))
-   (format-run-option :requested-time (:defaultRequestedTime app))])
-
 (defn- format-input-validator
   [input]
   {:required (get-boolean (get-in input [:value :required]) false)})
@@ -255,8 +230,7 @@
 (defn- format-groups
   [irods-home app]
   (remove nil?
-          [(format-group "Run Options" (format-run-options app))
-           (format-group "Inputs" (map (input-param-formatter irods-home) (:inputs app)))
+          [(format-group "Inputs" (map (input-param-formatter irods-home) (:inputs app)))
            (format-group "Parameters" (map (opt-param-formatter) (:parameters app)))
            (format-group "Outputs" (map (output-param-formatter) (:outputs app)))]))
 
@@ -287,12 +261,20 @@
    config
    (:inputs app)))
 
+(def ^:private default-processors "1")
+(def ^:private default-memory "4")
+(def ^:private default-runtime "1:00:00")
+
 (defn- job-config
   [irods-home app submission]
   (assoc (fix-input-paths irods-home app (:config submission))
-    :archive     true
-    :archivePath (get-archive-path irods-home submission)
-    :jobName     (:name submission)))
+    :archive        true
+    :archivePath    (get-archive-path irods-home submission)
+    :jobName        (:name submission)
+    :softwareName   (:id app)
+    :processorCount (or (:defaultProcessors app) default-processors)
+    :maxMemory      (or (:defaultMemory app) default-memory)
+    :requestedTime  (or (:defaultRequestedTime app) default-runtime)))
 
 (defn- app-info-for
   [app]
@@ -429,26 +411,6 @@
                       (constantly "")
                       param))
 
-(defn- format-runopt-param-value
-  ([run-opt value]
-     (apply format-runopt-param-value value (run-option-info run-opt)))
-  ([value name label type default-value visible?]
-     (format-param-value (constantly value)
-                         (constantly default-value)
-                         (constantly type)
-                         (constantly "")
-                         (constantly "")
-                         {:id      name
-                          :value   {:visible visible?}
-                          :details {:label label}})))
-
-(defn- format-runopt-param-values
-  [job]
-  [(format-runopt-param-value :software-name (:software job))
-   (format-runopt-param-value :processor-count (:processors job))
-   (format-runopt-param-value :max-memory (:memory job))
-   (format-runopt-param-value :requested-time (:requestedTime job))])
-
 (defn get-job-params
   [agave irods-home job-id]
   (let [job          (.listJob agave job-id)
@@ -458,8 +420,7 @@
         app-id       (:software job)
         app          (.getApp agave app-id)]
     {:analysis_id app-id
-     :parameters  (concat (format-runopt-param-values job)
-                          (mapv format-input (:inputs app))
+     :parameters  (concat (mapv format-input (:inputs app))
                           (mapv format-opt (:parameters app)))}))
 
 (defn- app-rerun-value-getter
@@ -469,21 +430,13 @@
       (or (values (keyword (:id p)))
           (get-default-param-value p)))))
 
-(defn- format-rerun-options
-  [job]
-  [(format-run-option :software-name (:software job))
-   (format-run-option :processor-count (:processors job))
-   (format-run-option :max-memory (:memory job))
-   (format-run-option :requested-time (:requestedTime job))])
-
 (defn- format-groups-for-rerun
   [irods-home job app]
   (let [value-getter (partial app-rerun-value-getter job)
         format-input (input-param-formatter irods-home :get-default (value-getter :inputs))
         format-opt   (opt-param-formatter :get-default (value-getter :parameters))]
     (remove nil?
-            [(format-group "Run Options" (format-rerun-options job))
-             (format-group "Inputs" (map format-input (:inputs app)))
+            [(format-group "Inputs" (map format-input (:inputs app)))
              (format-group "Parameters" (map format-opt (:parameters app)))
              (format-group "Outputs" (map (output-param-formatter) (:outputs app)))])))
 
