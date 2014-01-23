@@ -161,25 +161,23 @@
    :requested-time  ["requestedTime" "Requested Runtime" "Text" "1:00:00" true]})
 
 (defn- format-run-option
-  ([run-opt]
-     (apply format-run-option (run-option-info run-opt)))
-  ([run-opt value]
-     (apply format-run-option (assoc (run-option-info run-opt) 3 value)))
-  ([name label type value visible?]
+  ([run-opt provided-value]
+     (apply format-run-option provided-value (run-option-info run-opt)))
+  ([provided-value name label type default-value visible?]
      {:name         name
       :label        label
       :id           name
       :type         type
       :order        0
-      :defaultValue value
+      :defaultValue (if (nil? provided-value) default-value provided-value)
       :isVisible    visible?}))
 
 (defn- format-run-options
-  [app-id]
-  [(format-run-option :software-name app-id)
-   (format-run-option :processor-count)
-   (format-run-option :max-memory)
-   (format-run-option :requested-time)])
+  [app]
+  [(format-run-option :software-name (:id app))
+   (format-run-option :processor-count (:defaultProcessors app))
+   (format-run-option :max-memory (:defaultMemory app))
+   (format-run-option :requested-time (:defaultRequestedTime app))])
 
 (defn- format-input-validator
   [input]
@@ -257,7 +255,7 @@
 (defn- format-groups
   [irods-home app]
   (remove nil?
-          [(format-group "Run Options" (format-run-options (:id app)))
+          [(format-group "Run Options" (format-run-options app))
            (format-group "Inputs" (map (input-param-formatter irods-home) (:inputs app)))
            (format-group "Parameters" (map (opt-param-formatter) (:parameters app)))
            (format-group "Outputs" (map (output-param-formatter) (:outputs app)))]))
