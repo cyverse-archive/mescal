@@ -9,6 +9,8 @@
   :pom-addition [:developers
                  [:developer
                   [:url "https://github.com/orgs/iPlantCollaborativeOpenSource/teams/iplant-devs"]]]
+  :classifiers [["javadoc" :javadoc]
+                ["sources" :sources]]
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [cheshire "5.2.0"]
                  [clj-http "0.7.6"]
