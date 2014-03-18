@@ -5,7 +5,7 @@
 (defprotocol DeAgaveClient
   "An Agave client with customizations that are specific to the discovery environment."
   (publicAppGroup [this])
-  (listPublicApps [this])
+  (listPublicApps [this params])
   (searchPublicApps [this search-term])
   (getApp [this app-id])
   (getAppDeployedComponent [this app-id])
@@ -22,8 +22,8 @@
   DeAgaveClient
   (publicAppGroup [this]
     (v1/public-app-group))
-  (listPublicApps [this]
-    (v1/list-public-apps agave jobs-enabled?))
+  (listPublicApps [this params]
+    (v1/list-public-apps agave jobs-enabled? params))
   (searchPublicApps [this search-term]
     (v1/search-public-apps agave jobs-enabled? search-term))
   (getApp [this app-id]
