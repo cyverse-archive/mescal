@@ -84,13 +84,55 @@
             :wiki_url             ""
             :name                 app-name))))
 
+(defn- comparator-for
+  [sort-dir]
+  (let [lc (fnil string/lower-case "")]
+    (if (= "desc" (string/lower-case (or sort-dir "asc")))
+      #(compare (lc %2) (lc %1))
+      #(compare (lc %1) (lc %2)))))
+
+(defn- sort-results
+  [results sort-field sort-dir]
+  (if sort-field
+    (sort-by (keyword sort-field) (comparator-for sort-dir) results)
+    results))
+
+(defn- parse-long
+  [s]
+  (when-not (string/blank? s)
+    (try
+      (Long/parseLong s)
+      (catch NumberFormatException ignore nil))))
+
+(defn- apply-offset
+  [results offset-str]
+  (if-let [offset (parse-long offset-str)]
+    (drop offset results)
+    results))
+
+(defn- apply-limit
+  [results limit-str]
+  (if-let [limit (parse-long limit-str)]
+    (take limit results)
+    results))
+
+(defn- apply-params
+  [results params]
+  (-> results
+      (sort-results (:sortField params) (:sortDir params))
+      (apply-offset (:offset params))
+      (apply-limit (:limit params))))
+
 (defn list-public-apps
-  [agave jobs-enabled?]
+  [agave jobs-enabled? params]
   (let [statuses (system-statuses agave)
-        listing  (.listPublicApps agave)]
+        listing  (.listPublicApps agave)
+        total    (count listing)
+        listing  (map (partial format-app-listing statuses jobs-enabled?) listing)
+        listing  (apply-params listing params)]
     (assoc (public-app-group)
-      :templates      (map (partial format-app-listing statuses jobs-enabled?) listing)
-      :template_count (count listing))))
+      :templates      listing
+      :template_count total)))
 
 (defn- app-matches?
   [search-term app]
